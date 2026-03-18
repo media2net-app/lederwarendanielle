@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --leather-dark: #302118;
+  --leather-mid: #865d42;
+  --leather-light: #e5d6c4;
+  --leather-cream: #faf7f2;
+}
+
+/* Leerachtige achtergrond voor login linkerpaneel */
+.leather-bg {
+  background-color: var(--leather-dark);
+  background-image:
+    url("/thumb-1920-474157.jpg"),
+    linear-gradient(145deg, #1a1512 0%, var(--leather-dark) 40%, #3d2a1f 100%);
+  background-size: cover, cover;
+  background-position: center, center;
+  background-repeat: no-repeat, no-repeat;
+}
+
+/* Sidebar:zelfde leer, afbeelding een kwartslag gedraaid */
+.sidebar-leather-bg {
+  position: relative;
+  background-color: var(--leather-dark);
+  overflow: hidden;
+}
+.sidebar-leather-bg::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100vh;
+  height: 16rem;
+  transform: translate(-50%, -50%) rotate(90deg);
+  background: url("/thumb-1920-474157.jpg") center / cover no-repeat;
+  z-index: 0;
+}
+.sidebar-leather-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.15);
+  z-index: 1;
+  pointer-events: none;
+}
+.sidebar-leather-bg > * {
+  position: relative;
+  z-index: 2;
+}
+
+body {
+  @apply antialiased text-gray-900 bg-gray-50;
+}

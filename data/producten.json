@@ -1,0 +1,112 @@
+[
+  {
+    "id": "ld-crossbody",
+    "merkId": "leather-design",
+    "naam": "Leather Design Crossbody Tas",
+    "sku": "LD-CB-001",
+    "prijs": 69.95,
+    "imageUrl": "https://cdn.webshopapp.com/shops/353811/files/473943671/320x320x2/leather-design-crossbody-tas.jpg",
+    "productUrl": "https://www.leatherdesign.nl/crossbody-hunter-152237949.html",
+    "beschrijving": "Crossbody tas in leer. Stijlvol en praktisch voor dagelijks gebruik.",
+    "specificaties": "Materiaal: Leer. Kleur: bruin Hunter / Zwart. Intern ritsvak: Ja. Extern ritsvak: Ja. Aantal voorvakken: 1. Aantal hoofdvakken: 1."
+  },
+  {
+    "id": "ld-schoudertas",
+    "merkId": "leather-design",
+    "naam": "Leather Design Schoudertas",
+    "sku": "LD-SK-002",
+    "prijs": 55.95,
+    "imageUrl": "https://cdn.webshopapp.com/shops/353811/files/482356122/320x320x2/leather-design-schoudertas.jpg",
+    "productUrl": "https://www.leatherdesign.nl/schoudertas-klein.html",
+    "beschrijving": "Kleine schoudertas in leer. Compact en geschikt voor dagelijkse spullen.",
+    "specificaties": "Materiaal: Leer. Geschikt voor documenten en kleine spullen."
+  },
+  {
+    "id": "ld-shoulder-natural",
+    "merkId": "leather-design",
+    "naam": "Leather Design Shoulder bag Natural",
+    "sku": "LD-SN-003",
+    "prijs": 69.95,
+    "imageUrl": "https://cdn.webshopapp.com/shops/353811/files/460843274/320x320x2/leather-design-shoulder-bag-natural.jpg",
+    "productUrl": "https://www.leatherdesign.nl/shoulder-bag-natural-152238182.html",
+    "beschrijving": "Shoulder bag in naturel leer. Tijdloos design voor werk en vrije tijd.",
+    "specificaties": "Materiaal: Leer. Kleur: Naturel."
+  },
+  {
+    "id": "of-ratpack-messenger",
+    "merkId": "orange-fire",
+    "naam": "Orange Fire Rat Pack Messenger Overslag 2 vaks Laptop tas 13 inch",
+    "sku": "OF-RP-L13",
+    "prijs": 149.95,
+    "imageUrl": "https://cdn.webshopapp.com/shops/353811/files/455500173/320x320x2/orange-fire-rat-pack-messenger-overslag-2-vaks-lap.jpg",
+    "productUrl": "https://www.leatherdesign.nl/rat-pack-messenger-overslag-2-vaks-laptop-tas.html",
+    "beschrijving": "Messenger laptoptas met 2 vakken, geschikt voor 13 inch laptop. Stoer en functioneel design.",
+    "specificaties": "Materiaal: Leer. Laptopvak: 13 inch. Aantal vakken: 2."
+  },
+  {
+    "id": "ld-boodschappen",
+    "merkId": "leather-design",
+    "naam": "Leather Design Boodschappen tas Effen",
+    "sku": "LD-BT-004",
+    "prijs": 62.95,
+    "imageUrl": "https://cdn.webshopapp.com/shops/353811/files/461402197/320x320x2/leather-design-boodschappen-tas-effen.jpg",
+    "productUrl": "https://www.leatherdesign.nl/boodschappen-tas-effen-zwart-bruin.html",
+    "beschrijving": "Boodschappen tas in effen leer. Beschikbaar in zwart en bruin.",
+    "specificaties": "Materiaal: Leer. Kleur: Zwart / Bruin."
+  },
+  {
+    "id": "ld-doctors-bag",
+    "merkId": "leather-design",
+    "naam": "Leather Design Doctor's bag Hunter",
+    "sku": "LD-DB-005",
+    "prijs": 79.95,
+    "imageUrl": "https://cdn.webshopapp.com/shops/353811/files/472901035/320x320x2/leather-design-doctors-bag-hunter.jpg",
+    "productUrl": "https://www.leatherdesign.nl/doctors-bag-hunter.html",
+    "beschrijving": "Doctor's bag in Hunter bruin leer. Klassiek model met handvatten.",
+    "specificaties": "Materiaal: Leer. Kleur: Hunter bruin."
+  },
+  {
+    "id": "ld-shoulder-backpack",
+    "merkId": "leather-design",
+    "naam": "Leather Design Shoulder backpack",
+    "sku": "LD-SB-006",
+    "prijs": 94.95,
+    "imageUrl": "https://cdn.webshopapp.com/shops/353811/files/472884068/320x320x2/leather-design-shoulder-backpack.jpg",
+    "productUrl": "https://www.leatherdesign.nl/shoulder-backpack.html",
+    "beschrijving": "Shoulder backpack in leer. Combineert rugzakcomfort met schouderdraag.",
+    "specificaties": "Materiaal: Leer."
+  },
+  {
+    "id": "ld-dames-hand-schouder",
+    "merkId": "leather-design",
+    "naam": "Leather Design Dames hand- en schoudertas",
+    "sku": "LD-DH-007",
+    "prijs": 129.95,
+    "imageUrl": "https://cdn.webshopapp.com/shops/353811/files/461175602/320x320x2/leather-design-dames-hand-en-schoudertas.jpg",
+    "productUrl": "https://www.leatherdesign.nl/dames-hand-en-schoudertas.html",
+    "beschrijving": "Dames hand- en schoudertas in leer. Handvatten en schouderband voor veelzijdig dragen.",
+    "specificaties": "Materiaal: Leer."
+  },
+  {
+    "id": "ld-ritstasje",
+    "merkId": "leather-design",
+    "naam": "Ritstasje klein",
+    "sku": "LD-RT-008",
+    "prijs": 69.95,
+    "imageUrl": "https://cdn.webshopapp.com/shops/353811/files/474947712/320x320x2/ritstasje-klein.jpg",
+    "productUrl": "https://www.leatherdesign.nl/ritstasje-klein.html",
+    "beschrijving": "Klein ritstasje in leer. Compact formaat voor essentials.",
+    "specificaties": "Materiaal: Leer."
+  },
+  {
+    "id": "ld-rolltop",
+    "merkId": "leather-design",
+    "naam": "Leather Design Rolltop rugtas",
+    "sku": "LD-RR-009",
+    "prijs": 149.95,
+    "imageUrl": "https://cdn.webshopapp.com/shops/353811/files/461483127/320x320x2/leather-design-rolltop-rugtas.jpg",
+    "productUrl": "https://www.leatherdesign.nl/rolltop-rugtas.html",
+    "beschrijving": "Deze stijlvolle rolltop rugtas in de kleur Hunter Bruin combineert modern design met praktische functionaliteit. Afmeting 40 cm hoog, 35 cm breed en 12 cm diep. Ruime binnenvak met telefoonvakje. Twee ritsvakken aan de voorkant. Rolltop-ontwerp voor extra flexibiliteit in opbergruimte. Geschikt voor werk, school en vrije tijd.",
+    "specificaties": "Buitenafmeting: H 40 x B 35 x D 12. Materiaal: Leer. Kleur: Bruin. Laptopvak: Nee. Telefoonvak: Ja. Intern ritsvak: Ja. Extern ritsvak: Ja. Aantal voorvakken: 2. Aantal hoofdvakken: 1."
+  }
+]
