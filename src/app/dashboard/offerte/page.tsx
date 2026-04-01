@@ -105,6 +105,22 @@ export default function OffertePage() {
           </p>
         </div>
 
+
+        <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Belangrijke voorwaarden</p>
+          <ul className="mt-2 space-y-2 text-sm text-amber-900">
+            <li>Alle genoemde prijzen zijn <strong>exclusief 21% BTW</strong>.</li>
+            <li>Doorlooptijd project: <strong>12 weken</strong>.</li>
+            <li>Bij akkoord: <strong>50% aanbetaling</strong>.</li>
+            <li>
+              Bij oplevering plannen we <strong>1 dag op locatie</strong> waarin alles wordt ingesteld en
+              we daarnaast <strong>1 dag meedraaien</strong> voor begeleiding en support van medewerkers.
+              In principe kan alles op afstand ingericht worden, maar deze dagen worden aangeboden om een
+              soepele ingebruikname te garanderen.
+            </li>
+          </ul>
+        </div>
+
         <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Offertetotaal</p>
