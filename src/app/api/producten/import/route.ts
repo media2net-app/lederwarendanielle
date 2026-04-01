@@ -100,6 +100,7 @@ export async function POST(request: Request) {
       return {
         naam: get("naam", ["naam", "name", "Naam", "productnaam", "Productnaam"]),
         sku: get("sku", ["sku", "SKU", "artikelnummer", "Artikelcode"]),
+        ean: get("ean", ["ean", "EAN", "barcode", "gtin"]) || undefined,
         merkId: get("merkId", ["merkId", "merk_id", "merk", "brand", "Merk"]).toLowerCase().replace(/\s+/g, "-") || undefined,
         prijs: get("prijs", ["prijs", "price", "Prijs", "Prijs excl"]),
         voorraad: get("voorraad", ["voorraad", "stock", "Voorraad"]),
@@ -140,6 +141,7 @@ export async function POST(request: Request) {
           merkId,
           naam: r.naam,
           sku: r.sku,
+          ean: r.ean || undefined,
           prijs,
           voorraad,
           beschrijving: r.beschrijving || undefined,
@@ -152,6 +154,7 @@ export async function POST(request: Request) {
           merkId,
           naam: r.naam,
           sku: r.sku,
+          ean: r.ean || undefined,
           prijs,
           voorraad,
           beschrijving: r.beschrijving || undefined,

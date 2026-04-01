@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
-import { getProducten, createProduct } from "@/lib/producten-store";
+import { getProducten, getProductByEan, createProduct } from "@/lib/producten-store";
 import { MERKEN } from "@/lib/merken";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
+    const ean = searchParams.get("ean");
+    if (ean) {
+      const product = getProductByEan(ean);
+      if (!product) return NextResponse.json({ error: "Product niet gevonden" }, { status: 404 });
+      return NextResponse.json(product);
+    }
     const merkId = searchParams.get("merkId") ?? undefined;
     const producten = getProducten(merkId ?? undefined);
     return NextResponse.json(producten);
@@ -32,6 +38,7 @@ export async function POST(request: Request) {
       merkId,
       naam,
       sku,
+      ean: body.ean,
       prijs,
       voorraad: body.voorraad,
       imageUrl: body.imageUrl,

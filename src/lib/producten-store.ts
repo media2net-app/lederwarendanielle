@@ -50,6 +50,12 @@ export function getProductBySku(sku: string): Product | undefined {
   return loadProducten().find((p) => p.sku === sku);
 }
 
+export function getProductByEan(ean: string): Product | undefined {
+  const list = loadProducten();
+  const normalized = ean.trim();
+  return list.find((p) => p.ean === normalized) ?? list.find((p) => p.sku === normalized);
+}
+
 function generateId(): string {
   const list = loadProducten();
   const existing = new Set(list.map((p) => p.id));
@@ -70,6 +76,7 @@ export function createProduct(input: CreateProductInput): Product {
     merkId: input.merkId,
     naam: input.naam,
     sku: input.sku,
+    ean: input.ean,
     prijs: input.prijs,
     voorraad: input.voorraad,
     imageUrl: input.imageUrl,

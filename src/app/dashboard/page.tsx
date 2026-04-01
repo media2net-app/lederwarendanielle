@@ -64,6 +64,12 @@ export default function DashboardPage() {
           Welkom in het AI Headquarters. Overzicht van hoe Lederwaren Daniëlle er voor staat.
         </p>
 
+        <div className="mb-6 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">Demo script (10 min)</p>
+          <p className="mt-1 text-sm text-indigo-900">1) Bestellingen 2) Pick & Pack 3) Forecast 4) Klantenservice 5) AI Studio</p>
+          <p className="mt-1 text-xs text-indigo-700">Laatst bijgewerkt: {new Date().toLocaleString("nl-NL")}</p>
+        </div>
+
         <div className="mb-8 flex flex-wrap gap-3">
           <Link
             href="/dashboard/bestellingen"

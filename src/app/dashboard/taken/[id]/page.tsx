@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { getTaakById } from "@/lib/dashboard-data";
+import { getTaskStatusMap, setTaskStatus } from "@/lib/demo-state";
 import { getMerkById } from "@/lib/merken";
 import type { TaakStatus } from "@/lib/dashboard-data";
 
@@ -32,8 +33,10 @@ export default function TaakDetailPage() {
   const id = params?.id as string | undefined;
   const taakFromData = id ? getTaakById(id) : undefined;
   const [status, setStatus] = useState<TaakStatus | null>(null);
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const taak = taakFromData ?? null;
-  const currentStatus = status ?? taak?.status;
+  const mappedStatus = id ? getTaskStatusMap()[id] : null;
+  const currentStatus = status ?? mappedStatus ?? taak?.status;
 
   if (!id || !taak) {
     return (
@@ -100,14 +103,21 @@ export default function TaakDetailPage() {
             <label className="block text-sm font-medium text-gray-700">Status wijzigen</label>
             <select
               value={currentStatus ?? ""}
-              onChange={(e) => setStatus(e.target.value as TaakStatus)}
+              onChange={(e) => {
+                const next = e.target.value as TaakStatus;
+                setStatus(next);
+                setTaskStatus(id, next);
+                setSaveNotice("Taakstatus opgeslagen (demo)");
+                setTimeout(() => setSaveNotice(null), 2000);
+              }}
               className="mt-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
             >
               {STATUS_OPTIONS.map((s) => (
                 <option key={s} value={s}>{statusLabel(s)}</option>
               ))}
             </select>
-            <p className="mt-1 text-xs text-gray-500">Wijziging is alleen zichtbaar in deze sessie (demo).</p>
+            <p className="mt-1 text-xs text-gray-500">Wijziging blijft bewaard op dit apparaat (demo).</p>
+            {saveNotice && <p className="mt-2 text-xs text-emerald-700">{saveNotice}</p>}
           </div>
         </div>
       </div>

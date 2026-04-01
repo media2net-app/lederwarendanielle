@@ -7,6 +7,7 @@ import { MERKEN } from "@/lib/merken";
 const TARGET_FIELDS: { key: string; label: string; required?: boolean }[] = [
   { key: "naam", label: "Productnaam", required: true },
   { key: "sku", label: "SKU / artikelcode", required: true },
+  { key: "ean", label: "EAN / barcode", required: false },
   { key: "merkId", label: "Merk", required: false },
   { key: "prijs", label: "Prijs", required: true },
   { key: "voorraad", label: "Voorraad", required: false },
@@ -18,6 +19,7 @@ const TARGET_FIELDS: { key: string; label: string; required?: boolean }[] = [
 const TEMPLATE_HEADERS = [
   "naam",
   "sku",
+  "ean",
   "merkId",
   "prijs",
   "voorraad",
@@ -29,7 +31,7 @@ const TEMPLATE_HEADERS = [
 function downloadTemplate() {
   const header = TEMPLATE_HEADERS.join(";");
   const example =
-    "Voorbeeld product;SKU-001;leather-design;29.95;10;Korte beschrijving;Materiaal: Leer;foto1.jpg";
+    "Voorbeeld product;SKU-001;8712345001001;leather-design;29.95;10;Korte beschrijving;Materiaal: Leer;foto1.jpg";
   const csv = [header, example].join("\n");
   const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
@@ -45,7 +47,8 @@ function suggestMapping(csvHeaders: string[]): Record<string, string> {
   const mapping: Record<string, string> = {};
   const aliases: Record<string, string[]> = {
     naam: ["naam", "name", "productnaam", "product naam", "titel", "title"],
-    sku: ["sku", "artikelcode", "artikel", "code", "ean"],
+    sku: ["sku", "artikelcode", "artikel", "code"],
+    ean: ["ean", "barcode", "EAN", "gtin"],
     merkId: ["merkid", "merk_id", "merk", "brand"],
     prijs: ["prijs", "price", "prijs excl", "prijs_excl"],
     voorraad: ["voorraad", "stock", "quantity"],

@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { MERKEN, getMerkById } from "@/lib/merken";
 import { getKlantenserviceTickets, getKanaalLabel } from "@/lib/mock-klantenservice";
+import { getTicketUpdateMap } from "@/lib/demo-state";
 import type { TicketStatus } from "@/lib/mock-klantenservice";
 
 function formatDatum(iso: string) {
@@ -26,10 +27,15 @@ const TICKET_STATUS_OPTIONS: { value: string; label: string }[] = [
 export default function KlantenservicePage() {
   const [merkFilter, setMerkFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
-  const tickets = useMemo(
-    () => getKlantenserviceTickets(merkFilter || undefined, (statusFilter as TicketStatus) || undefined),
-    [merkFilter, statusFilter]
-  );
+  const tickets = useMemo(() => {
+    const updates = getTicketUpdateMap();
+    const base = getKlantenserviceTickets(merkFilter || undefined, undefined).map((t) => ({
+      ...t,
+      status: updates[t.id]?.status ?? t.status,
+    }));
+    if (!statusFilter) return base;
+    return base.filter((t) => t.status === statusFilter);
+  }, [merkFilter, statusFilter]);
 
   return (
     <main className="flex-1">

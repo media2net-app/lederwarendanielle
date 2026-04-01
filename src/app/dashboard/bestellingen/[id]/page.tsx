@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { getBestellingById } from "@/lib/mock-bestellingen";
+import { addOrderEvent, getOrderEvents, getOrderStatusMap, setOrderStatus } from "@/lib/demo-state";
 import { getMerkById } from "@/lib/merken";
 import type { BestellingStatus } from "@/lib/mock-bestellingen";
 
@@ -21,7 +22,18 @@ function formatBedrag(n: number) {
   return new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" }).format(n);
 }
 
-const STATUS_OPTIONS: BestellingStatus[] = ["open", "verwerkt", "verzonden", "afgeleverd"];
+function statusLabel(status: BestellingStatus) {
+  switch (status) {
+    case "te_plukken":
+      return "Klaarzetten";
+    case "gepicked":
+      return "Verzameld";
+    default:
+      return status;
+  }
+}
+
+const STATUS_OPTIONS: BestellingStatus[] = ["open", "te_plukken", "gepicked", "verpakt", "verwerkt", "verzonden", "afgeleverd"];
 
 export default function BestellingDetailPage() {
   const params = useParams();
@@ -30,9 +42,14 @@ export default function BestellingDetailPage() {
   const [status, setStatus] = useState<BestellingStatus | null>(null);
   const [aiSuggestie, setAiSuggestie] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
+  const [events, setEvents] = useState(() => getOrderEvents(id));
 
   useEffect(() => {
-    if (bestelling) setStatus(bestelling.status);
+    if (!bestelling) return;
+    const mapped = getOrderStatusMap()[bestelling.id];
+    setStatus(mapped ?? bestelling.status);
+    setEvents(getOrderEvents(bestelling.id));
   }, [bestelling]);
 
   if (!bestelling) {
@@ -50,6 +67,18 @@ export default function BestellingDetailPage() {
 
   const merk = getMerkById(bestelling.merkId);
   const currentStatus = status ?? bestelling.status;
+
+
+
+  const handleStatusChange = (nextStatus: BestellingStatus) => {
+    setStatus(nextStatus);
+    if (!bestelling) return;
+    setOrderStatus(bestelling.id, nextStatus);
+    addOrderEvent(bestelling.id, `Status gewijzigd naar ${statusLabel(nextStatus)}`);
+    setEvents(getOrderEvents(bestelling.id));
+    setSaveNotice("Status opgeslagen (demo)");
+    setTimeout(() => setSaveNotice(null), 2000);
+  };
 
   const handleAiSuggestie = async () => {
     setAiLoading(true);
@@ -78,6 +107,7 @@ export default function BestellingDetailPage() {
         </Link>
 
         <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+          {saveNotice && <p className="mb-3 rounded bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{saveNotice}</p>}
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h1 className="text-xl font-semibold text-gray-900">Bestelling {bestelling.ordernummer}</h1>
@@ -88,12 +118,12 @@ export default function BestellingDetailPage() {
               <label className="flex items-center gap-2 text-sm">
                 <span className="text-gray-600">Status:</span>
                 <select
-                  value={currentStatus}
-                  onChange={(e) => setStatus(e.target.value as BestellingStatus)}
+                  value={statusLabel(currentStatus)}
+                  onChange={(e) => handleStatusChange(e.target.value as BestellingStatus)}
                   className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-gray-900 focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
                 >
                   {STATUS_OPTIONS.map((s) => (
-                    <option key={s} value={s}>{s}</option>
+                    <option key={s} value={s}>{statusLabel(s)}</option>
                   ))}
                 </select>
               </label>
@@ -106,9 +136,15 @@ export default function BestellingDetailPage() {
                       : "bg-blue-100 text-blue-800"
                 }`}
               >
-                {currentStatus}
+                {statusLabel(currentStatus)}
               </span>
             </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link href={`/dashboard/magazijn/pick-pack?orderId=${bestelling.id}`} className="rounded-lg bg-black px-3 py-2 text-xs font-medium text-white hover:bg-gray-800">
+              Naar Pick & Pack
+            </Link>
           </div>
 
           <div className="mt-8 grid gap-8 sm:grid-cols-2">

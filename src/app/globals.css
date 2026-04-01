@@ -53,3 +53,179 @@
 body {
   @apply antialiased text-gray-900 bg-gray-50;
 }
+
+@media print {
+  body * { visibility: hidden; }
+  .verzendlabel-print-container,
+  .verzendlabel-print-container * { visibility: visible; }
+  .verzendlabel-print-container {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: white !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+  }
+  .verzendlabel-print-container > div {
+    box-shadow: none !important;
+    max-height: none !important;
+  }
+  .print\:hidden { display: none !important; visibility: hidden !important; }
+}
+
+
+.modern-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #111827 0%, #374151 100%);
+  outline: none;
+}
+
+.modern-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid #111827;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+}
+
+.modern-range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid #111827;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+}
+
+
+.forecast-row {
+  will-change: transform, box-shadow;
+}
+
+.forecast-row:hover {
+  box-shadow: inset 3px 0 0 #111827;
+}
+
+
+/* Platform-wide modern dashboard skin */
+.dashboard-skin {
+  --ui-card-radius: 14px;
+  --ui-card-border: #e5e7eb;
+  --ui-card-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 10px 24px rgba(15, 23, 42, 0.06);
+  --ui-control-border: #d1d5db;
+  --ui-control-focus: #111827;
+  --ui-bg-soft: #f9fafb;
+}
+
+.dashboard-skin .rounded-lg.border.border-gray-200.bg-white,
+.dashboard-skin .rounded-xl.border.border-gray-200.bg-white,
+.dashboard-skin .rounded-2xl.border.border-gray-200.bg-white {
+  border-radius: var(--ui-card-radius) !important;
+  border-color: var(--ui-card-border) !important;
+  box-shadow: var(--ui-card-shadow) !important;
+}
+
+.dashboard-skin .shadow-sm,
+.dashboard-skin .shadow,
+.dashboard-skin .shadow-md {
+  box-shadow: var(--ui-card-shadow) !important;
+}
+
+.dashboard-skin input[type="text"],
+.dashboard-skin input[type="email"],
+.dashboard-skin input[type="number"],
+.dashboard-skin input[type="password"],
+.dashboard-skin input[type="date"],
+.dashboard-skin textarea,
+.dashboard-skin select {
+  border-radius: 10px;
+  border: 1px solid var(--ui-control-border);
+  background: #fff;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.dashboard-skin input[type="text"]:focus,
+.dashboard-skin input[type="email"]:focus,
+.dashboard-skin input[type="number"]:focus,
+.dashboard-skin input[type="password"]:focus,
+.dashboard-skin input[type="date"]:focus,
+.dashboard-skin textarea:focus,
+.dashboard-skin select:focus {
+  border-color: var(--ui-control-focus);
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.1);
+  outline: none;
+}
+
+.dashboard-skin button {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+}
+
+.dashboard-skin button:hover {
+  transform: translateY(-1px);
+}
+
+.dashboard-skin button:active {
+  transform: translateY(0);
+}
+
+.dashboard-skin table thead tr {
+  background: rgba(249, 250, 251, 0.92);
+  backdrop-filter: blur(4px);
+}
+
+.dashboard-skin table th {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.dashboard-skin table tbody tr {
+  transition: background-color 0.18s ease, transform 0.18s ease;
+}
+
+.dashboard-skin table tbody tr:hover {
+  background-color: #f8fafc;
+}
+
+.dashboard-skin a.rounded-lg,
+.dashboard-skin a.rounded-xl,
+.dashboard-skin a.rounded-2xl {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.dashboard-skin a.rounded-lg:hover,
+.dashboard-skin a.rounded-xl:hover,
+.dashboard-skin a.rounded-2xl:hover {
+  transform: translateY(-1px);
+}
+
+
+.dashboard-skin button.bg-black,
+.dashboard-skin a.bg-black {
+  background: linear-gradient(135deg, #111827 0%, #1f2937 100%) !important;
+  box-shadow: 0 6px 18px rgba(17, 24, 39, 0.22);
+}
+
+.dashboard-skin button.bg-black:hover,
+.dashboard-skin a.bg-black:hover {
+  filter: brightness(1.03);
+}
+
+.dashboard-skin .rounded-full.bg-gray-200 {
+  background: #e5e7eb;
+  color: #374151;
+  font-weight: 600;
+}

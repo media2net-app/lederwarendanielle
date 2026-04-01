@@ -6,6 +6,7 @@ export interface Product {
   merkId: MerkId;
   naam: string;
   sku: string;
+  ean?: string;
   prijs: number;
   voorraad?: number;
   imageUrl?: string;

@@ -21,7 +21,13 @@ export default function LoginPage() {
     setIsSubmitting(true);
     await new Promise((r) => setTimeout(r, 600));
     if (email === DUMMY_EMAIL && password === DUMMY_PASSWORD) {
-      if (typeof window !== "undefined") window.sessionStorage.setItem("rondleiding_tonen", "1");
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem("user", JSON.stringify({
+          email: DUMMY_EMAIL,
+          naam: "Beheerder",
+          rol: "Admin",
+        }));
+      }
       router.push("/dashboard");
       return;
     }
