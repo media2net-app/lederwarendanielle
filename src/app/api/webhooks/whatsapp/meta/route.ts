@@ -6,22 +6,41 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 function getVerifyToken() {
-  return process.env.WHATSAPP_VERIFY_TOKEN ?? "";
+  return (process.env.WHATSAPP_VERIFY_TOKEN ?? "").trim();
 }
 
 /** Meta subscription verify (GET). */
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const mode = url.searchParams.get("hub.mode");
-  const token = url.searchParams.get("hub.verify_token");
+  const token = (url.searchParams.get("hub.verify_token") ?? "").trim();
   const challenge = url.searchParams.get("hub.challenge");
   const expected = getVerifyToken();
 
-  if (mode === "subscribe" && token && expected && token === expected) {
-    return new NextResponse(challenge ?? "", { status: 200 });
+  if (!expected) {
+    return NextResponse.json(
+      {
+        error: "WHATSAPP_VERIFY_TOKEN ontbreekt op de server",
+        hint: "Zet in Vercel/hosting dezelfde waarde als in Meta 'Verify token', daarna redeploy.",
+      },
+      { status: 503 }
+    );
   }
 
-  return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (mode === "subscribe" && token && token === expected) {
+    return new NextResponse(challenge ?? "", {
+      status: 200,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
+
+  return NextResponse.json(
+    {
+      error: "Forbidden",
+      hint: "Verify token komt niet overeen of query ontbreekt (hub.mode, hub.verify_token).",
+    },
+    { status: 403 }
+  );
 }
 
 type MetaContact = { profile?: { name?: string }; wa_id?: string };
