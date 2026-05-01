@@ -1,12 +1,25 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getB2BKlanten } from "@/lib/mock-b2b-klanten";
+import type { B2BKlant } from "@/lib/b2b-shared";
 import { getMerkById } from "@/lib/merken";
 
 export default function B2BKlantenPage() {
   const router = useRouter();
-  const klanten = getB2BKlanten();
+  const [klanten, setKlanten] = useState<B2BKlant[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/b2b-klanten")
+      .then(async (res) => {
+        const payload = (await res.json()) as { data?: B2BKlant[]; error?: string };
+        if (!res.ok) throw new Error(payload.error ?? "Kon B2B klanten niet laden.");
+        setKlanten(payload.data ?? []);
+      })
+      .catch(() => setKlanten([]))
+      .finally(() => setLoading(false));
+  }, []);
 
   return (
     <main className="flex-1">
@@ -69,7 +82,9 @@ export default function B2BKlantenPage() {
           </table>
         </div>
         {klanten.length === 0 && (
-          <p className="mt-4 text-center text-sm text-gray-500">Geen B2B klanten.</p>
+          <p className="mt-4 text-center text-sm text-gray-500">
+            {loading ? "B2B klanten laden..." : "Geen B2B klanten."}
+          </p>
         )}
       </div>
     </main>

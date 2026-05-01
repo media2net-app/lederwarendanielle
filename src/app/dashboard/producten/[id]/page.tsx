@@ -1,7 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProductById } from "@/lib/producten-store";
+import { createClient } from "@/utils/supabase/server";
+import { mapDbProduct, type DbProductRow } from "@/lib/products-shared";
+import { cookies } from "next/headers";
 import { getMerkById } from "@/lib/merken";
 import PushNaarWebshopButton from "../components/PushNaarWebshopButton";
 
@@ -9,11 +11,19 @@ function formatPrijs(n: number) {
   return new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" }).format(n);
 }
 
-export default function ProductDetailPage({ params }: { params: { id?: string } }) {
+export default async function ProductDetailPage({ params }: { params: { id?: string } }) {
   const id = params?.id;
   if (!id) notFound();
-  const product = getProductById(id);
-  if (!product) notFound();
+  const supabase = createClient(cookies());
+  const { data } = await supabase
+    .from("products")
+    .select(
+      "id, merk_id, naam, sku, ean, prijs, voorraad, image_url, image_urls, product_url, beschrijving, specificaties"
+    )
+    .eq("id", id)
+    .maybeSingle();
+  if (!data) notFound();
+  const product = mapDbProduct(data as DbProductRow);
 
   const merk = getMerkById(product.merkId);
 

@@ -2,8 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
-import { getB2BKlanten } from "@/lib/mock-b2b-klanten";
-import type { B2BKlant } from "@/lib/mock-b2b-klanten";
+import type { B2BKlant } from "@/lib/b2b-shared";
 import KlantkaartMap from "./components/KlantkaartMap";
 
 const LEDERWAREN_START: { naam: string; plaats: string; adres?: string; lat: number; lng: number } = {
@@ -26,7 +25,15 @@ function minutesToTime(min: number): string {
 }
 
 export default function KlantkaartPage() {
-  const klanten = useMemo(() => getB2BKlanten(), []);
+  const [klanten, setKlanten] = useState<B2BKlant[]>([]);
+  useEffect(() => {
+    fetch("/api/b2b-klanten")
+      .then(async (res) => {
+        const payload = (await res.json()) as { data?: B2BKlant[] };
+        setKlanten(payload.data ?? []);
+      })
+      .catch(() => setKlanten([]));
+  }, []);
   const klantenMetCoords = useMemo(() => klanten.filter((k) => k.lat != null && k.lng != null), [klanten]);
   const [routeSelection, setRouteSelection] = useState<Set<string>>(new Set());
   const [vertrektijd, setVertrektijd] = useState("08:00");

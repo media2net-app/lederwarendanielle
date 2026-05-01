@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
-import { getBestellingById } from "@/lib/mock-bestellingen";
+import { createClient } from "@/utils/supabase/server";
+import { mapDbOrder, type DbOrderRow } from "@/lib/orders-shared";
+import { cookies } from "next/headers";
 import { getMerkById } from "@/lib/merken";
 
 export async function POST(request: Request) {
@@ -12,7 +14,15 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const bestellingId = body.bestellingId ?? body.id;
-    const bestelling = bestellingId ? getBestellingById(bestellingId) : null;
+    const supabase = createClient(cookies());
+    const { data } = bestellingId
+      ? await supabase
+          .from("orders")
+          .select("id, merk_id, ordernummer, klant_naam, klant_email, totaal, status, datum, regels")
+          .eq("id", bestellingId)
+          .maybeSingle()
+      : { data: null };
+    const bestelling = data ? mapDbOrder(data as DbOrderRow) : null;
 
     if (!bestelling) {
       return NextResponse.json({ error: "Bestelling niet gevonden." }, { status: 404 });

@@ -256,9 +256,9 @@ export default function ForecastPage() {
       </div>
 
       {selectedProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4">
           {loadingDetail ? (
-            <div className="rounded-xl bg-white p-8 shadow-xl">
+            <div className="modal-surface rounded-xl p-8 shadow-xl">
               <p className="text-gray-600">Details laden...</p>
             </div>
           ) : detailData ? (
@@ -272,7 +272,7 @@ export default function ForecastPage() {
               }}
             />
           ) : (
-            <div className="rounded-xl bg-white p-8 shadow-xl">
+            <div className="modal-surface rounded-xl p-8 shadow-xl">
               <p className="text-gray-600">Kon details niet laden.</p>
               <button
                 type="button"

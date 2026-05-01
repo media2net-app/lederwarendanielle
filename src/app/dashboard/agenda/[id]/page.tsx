@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getAfspraakById } from "@/lib/dashboard-data";
+import { createClient } from "@/utils/supabase/server";
+import { mapDbAgendaItem, type DbAgendaRow } from "@/lib/agenda-shared";
+import { cookies } from "next/headers";
 
 function typeLabel(type: string) {
   switch (type) {
@@ -22,11 +24,18 @@ function formatDatum(d: string) {
   });
 }
 
-export default function AfspraakDetailPage({ params }: { params: { id?: string } }) {
+export default async function AfspraakDetailPage({ params }: { params: { id?: string } }) {
   const id = params?.id;
   if (!id) notFound();
-  const afspraak = getAfspraakById(id);
-  if (!afspraak) notFound();
+
+  const supabase = createClient(cookies());
+  const { data } = await supabase
+    .from("agenda_items")
+    .select("id, titel, datum, start_tijd, eind_tijd, locatie, deelnemers, type, notities")
+    .eq("id", id)
+    .single();
+  if (!data) notFound();
+  const afspraak = mapDbAgendaItem(data as DbAgendaRow);
 
   return (
     <main className="flex-1">

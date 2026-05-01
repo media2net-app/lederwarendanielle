@@ -82,8 +82,8 @@ export default function ForecastProductDetail({
     });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-xl bg-white shadow-xl">
+    <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="modal-surface max-h-[90vh] w-full max-w-2xl overflow-auto rounded-xl shadow-xl">
         <div className="border-b border-gray-200 p-6">
           <div className="flex items-start justify-between">
             <div>

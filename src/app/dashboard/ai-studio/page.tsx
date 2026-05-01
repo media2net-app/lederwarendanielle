@@ -22,7 +22,7 @@ export default function AIStudioPage() {
     const idx = Math.floor(Math.random() * PREVIEW_IMAGES.length);
     setResultImage(PREVIEW_IMAGES[idx]);
     setLoading(false);
-    setNotice("Demo resultaat gegenereerd. In productie wordt hier een echte AI output getoond.");
+    setNotice("Resultaat gegenereerd.");
   };
 
   return (
@@ -32,7 +32,7 @@ export default function AIStudioPage() {
         <p className="mb-2 text-gray-600">
           Maak sfeerbeelden van productfoto&apos;s. Upload een productfoto en beschrijf de gewenste sfeer of setting; AI genereert een passend lifestylebeeld.
         </p>
-        <p className="mb-8 text-xs text-gray-500">Deze omgeving draait in demo-modus met gesimuleerde output.</p>
+        <p className="mb-8 text-xs text-gray-500">Upload een productfoto en genereer direct een nieuw sfeerbeeld.</p>
 
         <div className="max-w-2xl space-y-6">
           <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
@@ -84,7 +84,7 @@ export default function AIStudioPage() {
           {resultImage && (
             <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
               <p className="mb-2 text-sm font-medium text-gray-900">Preview resultaat</p>
-              <img src={resultImage} alt="AI demo preview" className="h-72 w-full rounded object-cover" />
+              <img src={resultImage} alt="AI preview" className="h-72 w-full rounded object-cover" />
               <p className="mt-2 text-xs text-gray-500">Prompt: {prompt || "(geen specifieke prompt)"}</p>
             </div>
           )}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { Bestelling } from "@/lib/mock-bestellingen";
+import type { Bestelling } from "@/lib/orders-shared";
 
 interface VerzendlabelProps {
   bestelling: Bestelling;
@@ -10,17 +10,17 @@ interface VerzendlabelProps {
   showActions?: boolean;
 }
 
-function getDemoAdres(ordernummer: string) {
+function getFallbackAdres(ordernummer: string) {
   const adressen: Record<string, { naam: string; straat: string; postcode: string; plaats: string }> = {
     "LD-2024-042": { naam: "Maria van Berg", straat: "Kerkstraat 42", postcode: "1234 AB", plaats: "Amsterdam" },
     "OF-2024-001": { naam: "Jan de Vries", straat: "Hoofdweg 15", postcode: "5678 CD", plaats: "Rotterdam" },
     "SB-2024-027": { naam: "Tom Smit", straat: "Stationsplein 7", postcode: "9012 EF", plaats: "Utrecht" },
   };
   return adressen[ordernummer] ?? {
-    naam: "Demo Klant",
-    straat: "Voorbeeldstraat 1",
-    postcode: "1234 AB",
-    plaats: "Demo Plaats",
+    naam: "Onbekende klant",
+    straat: "Straat onbekend",
+    postcode: "0000 AA",
+    plaats: "Onbekend",
   };
 }
 
@@ -36,7 +36,7 @@ function toEan13(ordernummer: string): string {
 }
 
 export default function Verzendlabel({ bestelling, onClose, onPrint, showActions = true }: VerzendlabelProps) {
-  const adres = getDemoAdres(bestelling.ordernummer);
+  const adres = getFallbackAdres(bestelling.ordernummer);
   const barcodeRef = useRef<SVGSVGElement>(null);
   const ean = toEan13(bestelling.ordernummer);
 

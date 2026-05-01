@@ -7,9 +7,9 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    <div className="flex h-screen overflow-hidden ui-app-shell">
       <Sidebar />
-      <div className="dashboard-skin flex-1 flex flex-col min-w-0 min-h-0 overflow-auto">
+      <div className="dashboard-skin flex-1 flex min-w-0 min-h-0 flex-col overflow-auto pt-14 md:pt-0">
         {children}
       </div>
       <AIMedewerkerPanel />

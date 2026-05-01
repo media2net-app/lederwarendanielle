@@ -3,10 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { getBestellingById } from "@/lib/mock-bestellingen";
-import { addOrderEvent, getOrderEvents, getOrderStatusMap, setOrderStatus } from "@/lib/demo-state";
 import { getMerkById } from "@/lib/merken";
-import type { BestellingStatus } from "@/lib/mock-bestellingen";
+import type { Bestelling, BestellingStatus } from "@/lib/orders-shared";
 
 function formatDatum(iso: string) {
   return new Date(iso).toLocaleDateString("nl-NL", {
@@ -38,25 +36,52 @@ const STATUS_OPTIONS: BestellingStatus[] = ["open", "te_plukken", "gepicked", "v
 export default function BestellingDetailPage() {
   const params = useParams();
   const id = params.id as string;
-  const bestelling = getBestellingById(id);
+  const [bestelling, setBestelling] = useState<Bestelling | null>(null);
   const [status, setStatus] = useState<BestellingStatus | null>(null);
-  const [aiSuggestie, setAiSuggestie] = useState<string | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
-  const [events, setEvents] = useState(() => getOrderEvents(id));
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!bestelling) return;
-    const mapped = getOrderStatusMap()[bestelling.id];
-    setStatus(mapped ?? bestelling.status);
-    setEvents(getOrderEvents(bestelling.id));
-  }, [bestelling]);
+    const controller = new AbortController();
+    const loadOrder = async () => {
+      setLoading(true);
+      setError(null);
+      const res = await fetch(`/api/orders/${id}`, { signal: controller.signal });
+      const payload = await res.json();
+      if (!res.ok) {
+        setBestelling(null);
+        setError(payload.error ?? "Bestelling niet gevonden.");
+      } else {
+        setBestelling(payload.data);
+        setStatus(payload.data.status);
+      }
+      setLoading(false);
+    };
+    loadOrder().catch((err) => {
+      if (err?.name === "AbortError") return;
+      setBestelling(null);
+      setError("Bestelling niet gevonden.");
+      setLoading(false);
+    });
+    return () => controller.abort();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <main className="flex-1">
+        <div className="w-full pl-10 pr-6 py-8">
+          <p className="text-gray-500">Bestelling laden...</p>
+        </div>
+      </main>
+    );
+  }
 
   if (!bestelling) {
     return (
       <main className="flex-1">
         <div className="w-full pl-10 pr-6 py-8">
-          <p className="text-gray-500">Bestelling niet gevonden.</p>
+          <p className="text-gray-500">{error ?? "Bestelling niet gevonden."}</p>
           <Link href="/dashboard/bestellingen" className="mt-4 inline-block text-sm text-black hover:underline">
             ← Terug
           </Link>
@@ -67,36 +92,29 @@ export default function BestellingDetailPage() {
 
   const merk = getMerkById(bestelling.merkId);
   const currentStatus = status ?? bestelling.status;
+  const totaalItems = bestelling.regels.reduce((sum, regel) => sum + regel.aantal, 0);
+  const subtotaal = bestelling.regels.reduce((sum, regel) => sum + regel.aantal * regel.eenheidsprijs, 0);
+  const btwBedrag = Math.max(0, bestelling.totaal - subtotaal);
 
 
 
   const handleStatusChange = (nextStatus: BestellingStatus) => {
     setStatus(nextStatus);
-    if (!bestelling) return;
-    setOrderStatus(bestelling.id, nextStatus);
-    addOrderEvent(bestelling.id, `Status gewijzigd naar ${statusLabel(nextStatus)}`);
-    setEvents(getOrderEvents(bestelling.id));
-    setSaveNotice("Status opgeslagen (demo)");
-    setTimeout(() => setSaveNotice(null), 2000);
-  };
-
-  const handleAiSuggestie = async () => {
-    setAiLoading(true);
-    setAiSuggestie(null);
-    try {
-      const res = await fetch("/api/ai/suggest-order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bestellingId: id }),
+    fetch(`/api/orders/${bestelling.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: nextStatus }),
+    })
+      .then(async (res) => {
+        const payload = await res.json();
+        if (!res.ok) throw new Error(payload.error ?? "Kon status niet opslaan.");
+        setBestelling(payload.data);
+        setSaveNotice("Status opgeslagen");
+        setTimeout(() => setSaveNotice(null), 2000);
+      })
+      .catch((err) => {
+        setError(err.message || "Kon status niet opslaan.");
       });
-      const data = await res.json();
-      if (res.ok && data.suggestion) setAiSuggestie(data.suggestion);
-      else setAiSuggestie(data.error ?? "Geen suggestie ontvangen.");
-    } catch {
-      setAiSuggestie("Kon geen verbinding maken. Probeer het opnieuw.");
-    } finally {
-      setAiLoading(false);
-    }
   };
 
   return (
@@ -118,7 +136,7 @@ export default function BestellingDetailPage() {
               <label className="flex items-center gap-2 text-sm">
                 <span className="text-gray-600">Status:</span>
                 <select
-                  value={statusLabel(currentStatus)}
+                  value={currentStatus}
                   onChange={(e) => handleStatusChange(e.target.value as BestellingStatus)}
                   className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-gray-900 focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
                 >
@@ -159,20 +177,74 @@ export default function BestellingDetailPage() {
             </div>
           </div>
 
-          <div className="mt-8 border-t border-gray-100 pt-6">
-            <h2 className="text-sm font-medium uppercase text-gray-500">AI-suggestie</h2>
-            <button
-              type="button"
-              onClick={handleAiSuggestie}
-              disabled={aiLoading}
-              className="mt-2 rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
-            >
-              {aiLoading ? "Bezig…" : "Genereer AI-suggestie"}
-            </button>
-            {aiSuggestie && (
-              <div className="mt-3 rounded-lg bg-gray-100 p-4 text-sm text-gray-800">{aiSuggestie}</div>
-            )}
+          <div className="mt-8 grid gap-4 md:grid-cols-4">
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <p className="text-xs font-medium uppercase text-gray-500">Productregels</p>
+              <p className="mt-1 text-2xl font-semibold text-gray-900">{bestelling.regels.length}</p>
+            </div>
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <p className="text-xs font-medium uppercase text-gray-500">Totaal items</p>
+              <p className="mt-1 text-2xl font-semibold text-gray-900">{totaalItems}</p>
+            </div>
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <p className="text-xs font-medium uppercase text-gray-500">Subtotaal</p>
+              <p className="mt-1 text-2xl font-semibold text-gray-900">{formatBedrag(subtotaal)}</p>
+            </div>
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <p className="text-xs font-medium uppercase text-gray-500">BTW / afronding</p>
+              <p className="mt-1 text-2xl font-semibold text-gray-900">{formatBedrag(btwBedrag)}</p>
+            </div>
           </div>
+
+          <div className="mt-8 border-t border-gray-100 pt-6">
+            <h2 className="text-sm font-medium uppercase tracking-wide text-gray-500">Producten in bestelling</h2>
+            <div className="mt-4 overflow-x-auto rounded-xl border border-gray-200">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 font-medium text-gray-700">Product</th>
+                    <th className="px-4 py-3 font-medium text-gray-700">SKU</th>
+                    <th className="px-4 py-3 font-medium text-gray-700">EAN</th>
+                    <th className="px-4 py-3 text-right font-medium text-gray-700">Aantal</th>
+                    <th className="px-4 py-3 text-right font-medium text-gray-700">Eenheidsprijs</th>
+                    <th className="px-4 py-3 text-right font-medium text-gray-700">Regeltotaal</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 bg-white">
+                  {bestelling.regels.map((regel) => (
+                    <tr key={`${regel.productId}-${regel.sku}`}>
+                      <td className="px-4 py-3 font-medium text-gray-900">{regel.naam}</td>
+                      <td className="px-4 py-3 text-gray-600">{regel.sku}</td>
+                      <td className="px-4 py-3 text-gray-600">{regel.ean}</td>
+                      <td className="px-4 py-3 text-right text-gray-900">{regel.aantal}</td>
+                      <td className="px-4 py-3 text-right text-gray-900">{formatBedrag(regel.eenheidsprijs)}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-gray-900">
+                        {formatBedrag(regel.aantal * regel.eenheidsprijs)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-gray-50">
+                    <td className="px-4 py-3 font-medium text-gray-700" colSpan={5}>
+                      Ordertotaal
+                    </td>
+                    <td className="px-4 py-3 text-right text-base font-semibold text-gray-900">
+                      {formatBedrag(bestelling.totaal)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+
+          <div className="mt-8 border-t border-gray-100 pt-6">
+            <h2 className="text-sm font-medium uppercase tracking-wide text-gray-500">Interne tijdlijn</h2>
+            <p className="mt-3 text-sm text-gray-500">
+              Tijdlijn op basis van events wordt in de volgende migratiestap gekoppeld aan de `events` tabel.
+            </p>
+          </div>
+
         </div>
       </div>
     </main>

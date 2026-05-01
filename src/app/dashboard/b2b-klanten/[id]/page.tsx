@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getB2BKlantById, getLogTypeLabel } from "@/lib/mock-b2b-klanten";
+import { createClient } from "@/utils/supabase/server";
+import { cookies } from "next/headers";
+import { getLogTypeLabel, mapDbB2B, mapDbB2BLog, type DbB2BLogRow, type DbB2BRow } from "@/lib/b2b-shared";
 import { getMerkById } from "@/lib/merken";
 
 function formatDatum(iso: string) {
@@ -13,11 +15,27 @@ function formatDatum(iso: string) {
   });
 }
 
-export default function B2BKlantDetailPage({ params }: { params: { id?: string } }) {
+export default async function B2BKlantDetailPage({ params }: { params: { id?: string } }) {
   const id = params?.id;
   if (!id) notFound();
-  const klant = getB2BKlantById(id);
-  if (!klant) notFound();
+  const supabase = createClient(cookies());
+  const { data } = await supabase
+    .from("b2b_customers")
+    .select(
+      "id, bedrijfsnaam, contactpersoon, email, telefoon, adres, postcode, plaats, land, kvk, btw_nummer, merken, status, klant_sinds, notities, lat, lng"
+    )
+    .eq("id", id)
+    .maybeSingle();
+  if (!data) notFound();
+  const { data: logsData } = await supabase
+    .from("b2b_customer_logs")
+    .select("id, klant_id, datum, type, titel, beschrijving, door")
+    .eq("klant_id", id)
+    .order("datum", { ascending: false });
+  const klant = {
+    ...mapDbB2B(data as DbB2BRow),
+    logs: ((logsData as DbB2BLogRow[] | null) ?? []).map(mapDbB2BLog),
+  };
 
   const merkenLabels = klant.merken.map((m) => getMerkById(m)?.naam ?? m).join(", ");
   const logsSorted = [...klant.logs].sort(

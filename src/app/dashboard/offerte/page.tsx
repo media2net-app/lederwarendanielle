@@ -67,7 +67,7 @@ const ONDERDELEN: OfferteOnderdeel[] = [
     watKanHet: [
       "Kanalen voor afdelingen (magazijn, support, algemeen)",
       "Direct messages tussen collega's",
-      "Ongelezen indicatoren en lokale demo-persistentie",
+      "Ongelezen indicatoren en realtime persistentie",
     ],
   },
   {

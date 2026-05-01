@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
-import { getBestellingen } from "@/lib/mock-bestellingen";
-import { getProducten } from "@/lib/producten-store";
+import { createClient } from "@/utils/supabase/server";
+import { mapDbOrder, type DbOrderRow } from "@/lib/orders-shared";
+import { mapDbProduct, type DbProductRow } from "@/lib/products-shared";
+import { cookies } from "next/headers";
 import { berekenForecast, type Verzendmethode } from "@/lib/forecast";
 
 export async function GET(request: Request) {
@@ -9,8 +11,19 @@ export async function GET(request: Request) {
     const weken = parseInt(searchParams.get("weken") ?? "12", 10);
     const methode = (searchParams.get("methode") ?? "schip") as Verzendmethode;
 
-    const bestellingen = getBestellingen();
-    const producten = getProducten();
+    const supabase = createClient(cookies());
+    const [{ data: ordersData, error: ordersError }, { data: productsData, error: productsError }] = await Promise.all([
+      supabase
+      .from("orders")
+      .select("id, merk_id, ordernummer, klant_naam, klant_email, totaal, status, datum, regels"),
+      supabase
+        .from("products")
+        .select("id, merk_id, naam, sku, ean, prijs, voorraad, image_url, image_urls, product_url, beschrijving, specificaties"),
+    ]);
+    if (ordersError) throw new Error(ordersError.message);
+    if (productsError) throw new Error(productsError.message);
+    const bestellingen = ((ordersData as DbOrderRow[] | null) ?? []).map(mapDbOrder);
+    const producten = ((productsData as DbProductRow[] | null) ?? []).map(mapDbProduct);
 
     const forecast = berekenForecast(
       bestellingen,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { B2BKlant } from "@/lib/mock-b2b-klanten";
+import type { B2BKlant } from "@/lib/b2b-shared";
 
 declare global {
   interface Window {

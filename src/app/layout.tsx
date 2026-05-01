@@ -14,7 +14,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="nl">
-      <body className="min-h-screen">{children}</body>
+      <body className="min-h-screen theme-luxe-dark" data-theme="dark-luxe">
+        {children}
+      </body>
     </html>
   );
 }

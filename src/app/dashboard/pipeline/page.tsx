@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
-import { getPipelineLeads, PIPELINE_STAGES, type PipelineLead, type PipelineStage } from "@/lib/mock-pipeline";
-import { getPipelineStageMap, setPipelineStage } from "@/lib/demo-state";
+import { PIPELINE_STAGES, type PipelineLead, type PipelineStage } from "@/lib/pipeline-shared";
 import { getMerkById } from "@/lib/merken";
 
 function formatBedrag(n: number) {
@@ -48,12 +47,30 @@ function LeadCard({ lead }: { lead: PipelineLead }) {
 }
 
 export default function PipelinePage() {
-  const [leads, setLeads] = useState<PipelineLead[]>(() => {
-    const map = getPipelineStageMap();
-    return getPipelineLeads().map((l) => ({ ...l, stage: map[l.id] ?? l.stage }));
-  });
+  const [leads, setLeads] = useState<PipelineLead[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<PipelineStage | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    fetch("/api/pipeline")
+      .then(async (res) => {
+        const payload = (await res.json()) as { data?: PipelineLead[]; error?: string };
+        if (!res.ok) throw new Error(payload.error ?? "Kon pipeline niet laden.");
+        if (mounted) setLeads(payload.data ?? []);
+      })
+      .catch((err: unknown) => {
+        if (mounted) setError(err instanceof Error ? err.message : "Kon pipeline niet laden.");
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const leadsByStage = useMemo(() => {
     const map: Record<PipelineStage, PipelineLead[]> = {
@@ -98,6 +115,7 @@ export default function PipelinePage() {
       <div className="w-full pl-10 pr-6 py-8">
         <h2 className="mb-2 text-2xl font-semibold text-gray-900">Pipeline</h2>
         {saveNotice && <p className="mb-3 rounded bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{saveNotice}</p>}
+        {error && <p className="mb-3 rounded bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
         <p className="mb-3 text-gray-600">
           Kanban-overzicht van nieuwe potentiële klanten. Sleep leads naar een andere fase wanneer de status wijzigt.
         </p>
@@ -115,17 +133,25 @@ export default function PipelinePage() {
                 e.preventDefault();
                 const leadId = e.dataTransfer.getData("text/plain");
                 if (leadId) {
-                  setLeads((prev) =>
-                    prev.map((l) => {
-                      if (l.id !== leadId) return l;
-                      setPipelineStage(l.id, id);
-                      return { ...l, stage: id };
+                  const previousLeads = leads;
+                  setLeads((prev) => prev.map((l) => (l.id !== leadId ? l : { ...l, stage: id })));
+                  fetch(`/api/pipeline/${leadId}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ stage: id }),
+                  })
+                    .then(async (res) => {
+                      const payload = (await res.json()) as { error?: string };
+                      if (!res.ok) throw new Error(payload.error ?? "Pipeline-update mislukt.");
+                      setSaveNotice("Pipeline bijgewerkt.");
+                      setTimeout(() => setSaveNotice(null), 1800);
                     })
-                  );
+                    .catch((err: unknown) => {
+                      setLeads(previousLeads);
+                      setError(err instanceof Error ? err.message : "Pipeline-update mislukt.");
+                    });
                 }
                 setDragOverColumn(null);
-                setSaveNotice("Pipeline bijgewerkt (demo)");
-                setTimeout(() => setSaveNotice(null), 1800);
               }}
               className={`flex w-72 shrink-0 flex-col rounded-lg border-2 border-dashed transition-colors min-h-[120px] ${
                 dragOverColumn === id ? "border-black bg-gray-100" : "border-gray-200 bg-gray-50"
@@ -141,6 +167,9 @@ export default function PipelinePage() {
                 Potentiële omzet: <span className="font-semibold text-gray-900">{formatBedrag(omzetByStage[id])}</span>
               </div>
               <div className="flex flex-col gap-2 p-3 min-h-[140px]">
+                {loading && id === "nieuw" && (
+                  <p className="rounded bg-white p-2 text-xs text-gray-500">Pipeline laden...</p>
+                )}
                 {leadsByStage[id].map((lead) => (
                   <LeadCard key={lead.id} lead={lead} />
                 ))}

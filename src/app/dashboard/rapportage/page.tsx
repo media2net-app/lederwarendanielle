@@ -1,41 +1,45 @@
 import Link from "next/link";
-import {
-  getMerkStatistieken,
-  getTotaalOmzetDezeMaand,
-  getTotaalDoelDezeMaand,
-  getOpenTakenCount,
-  getTaken,
-  getTakenDezeWeekAfgerond,
-  getMedewerkers,
-} from "@/lib/dashboard-data";
-import { getBestellingen, getBestellingenVandaag, getBestellingenDezeWeek } from "@/lib/mock-bestellingen";
-import { MOCK_KLANTENSERVICE } from "@/lib/mock-klantenservice";
-import { getB2BKlanten } from "@/lib/mock-b2b-klanten";
-import { MOCK_PIPELINE_LEADS, PIPELINE_STAGES } from "@/lib/mock-pipeline";
-import { getProducten } from "@/lib/producten-store";
-import { getMerkById } from "@/lib/merken";
+import { PIPELINE_STAGES } from "@/lib/pipeline-shared";
+import { createClient } from "@/utils/supabase/server";
+import { cookies } from "next/headers";
+import { mapDbOrder, type DbOrderRow } from "@/lib/orders-shared";
+import type { DbPipelineLeadRow } from "@/lib/pipeline-shared";
+import { getDashboardDbData } from "@/lib/dashboard-db";
+import DagrapportagePanel from "../components/DagrapportagePanel";
 
 function formatBedrag(n: number) {
   return new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" }).format(n);
 }
 
-export default function RapportagePage() {
-  const producten = getProducten();
-  const productenPerMerk = producten.reduce(
-    (acc, p) => {
-      acc[p.merkId] = (acc[p.merkId] ?? 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>
-  );
-  const merkStats = getMerkStatistieken(productenPerMerk);
-  const omzetMaand = getTotaalOmzetDezeMaand();
-  const doelMaand = getTotaalDoelDezeMaand();
-  const procentDoel = doelMaand > 0 ? Math.round((omzetMaand / doelMaand) * 100) : 0;
+export default async function RapportagePage() {
+  const supabase = createClient(cookies());
+  const [{ data: ordersData }, { data: ticketsData }, { data: pipelineData }, { data: b2bData }, dashboardData] = await Promise.all([
+    supabase
+      .from("orders")
+      .select("id, merk_id, ordernummer, klant_naam, klant_email, totaal, status, datum, regels")
+      .order("datum", { ascending: false }),
+    supabase
+      .from("tickets")
+      .select("id, status, kanaal")
+      .order("created_at", { ascending: false }),
+    supabase.from("pipeline_leads").select("id, stage"),
+    supabase.from("b2b_customers").select("id, status"),
+    getDashboardDbData(),
+  ]);
 
-  const bestellingen = getBestellingen();
-  const bestellingenVandaag = getBestellingenVandaag();
-  const bestellingenWeek = getBestellingenDezeWeek();
+  const bestellingen = ((ordersData as DbOrderRow[] | null) ?? []).map(mapDbOrder);
+  const tickets = ticketsData ?? [];
+  const pipelineLeads = (pipelineData as Pick<DbPipelineLeadRow, "id" | "stage">[] | null) ?? [];
+  const merkStats = dashboardData.merkStats;
+  const omzetMaand = dashboardData.omzetMaand;
+  const doelMaand = dashboardData.doelMaand;
+  const procentDoel = doelMaand > 0 ? Math.round((omzetMaand / doelMaand) * 100) : 0;
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const weekStart = new Date();
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+  weekStart.setHours(0, 0, 0, 0);
+  const bestellingenVandaag = bestellingen.filter((bestelling) => bestelling.datum.slice(0, 10) === todayISO).length;
+  const bestellingenWeek = bestellingen.filter((bestelling) => new Date(bestelling.datum) >= weekStart).length;
   const openBestellingen = bestellingen.filter((b) => b.status === "open").length;
   const verwerkt = bestellingen.filter((b) => b.status === "verwerkt").length;
   const verzonden = bestellingen.filter((b) => b.status === "verzonden").length;
@@ -45,38 +49,44 @@ export default function RapportagePage() {
       ? bestellingen.reduce((s, b) => s + b.totaal, 0) / bestellingen.length
       : 0;
 
-  const ticketsOpen = MOCK_KLANTENSERVICE.filter((t) => t.status === "open").length;
-  const ticketsBeantwoord = MOCK_KLANTENSERVICE.filter((t) => t.status === "beantwoord").length;
-  const ticketsAfgehandeld = MOCK_KLANTENSERVICE.filter((t) => t.status === "afgehandeld").length;
-  const ticketsChat = MOCK_KLANTENSERVICE.filter((t) => t.kanaal === "chat").length;
-  const ticketsWhatsapp = MOCK_KLANTENSERVICE.filter((t) => t.kanaal === "whatsapp").length;
-  const ticketsEmail = MOCK_KLANTENSERVICE.filter((t) => t.kanaal === "email").length;
+  const ticketsOpen = tickets.filter((t) => t.status === "open").length;
+  const ticketsInBehandeling = tickets.filter((t) => t.status === "in_behandeling").length;
+  const ticketsWachtOpKlant = tickets.filter((t) => t.status === "wacht_op_klant").length;
+  const ticketsOpgelost = tickets.filter((t) => t.status === "opgelost").length;
+  const ticketsChat = tickets.filter((t) => t.kanaal === "chat").length;
+  const ticketsWhatsapp = tickets.filter((t) => t.kanaal === "whatsapp").length;
+  const ticketsEmail = tickets.filter((t) => t.kanaal === "email").length;
 
-  const b2bActief = getB2BKlanten("actief").length;
-  const b2bProspect = getB2BKlanten("prospect").length;
-  const b2bInactief = getB2BKlanten("inactief").length;
+  const b2bRows = b2bData ?? [];
+  const b2bActief = b2bRows.filter((item) => item.status === "actief").length;
+  const b2bProspect = b2bRows.filter((item) => item.status === "prospect").length;
+  const b2bInactief = b2bRows.filter((item) => item.status === "inactief").length;
 
   const pipelinePerStage = PIPELINE_STAGES.map((s) => ({
     ...s,
-    count: MOCK_PIPELINE_LEADS.filter((l) => l.stage === s.id).length,
+    count: pipelineLeads.filter((l) => l.stage === s.id).length,
   }));
-  const pipelineGewonnen = MOCK_PIPELINE_LEADS.filter((l) => l.stage === "gewonnen").length;
-  const pipelineVerloren = MOCK_PIPELINE_LEADS.filter((l) => l.stage === "verloren").length;
+  const pipelineGewonnen = pipelineLeads.filter((l) => l.stage === "gewonnen").length;
+  const pipelineVerloren = pipelineLeads.filter((l) => l.stage === "verloren").length;
 
-  const taken = getTaken();
-  const openTaken = getOpenTakenCount();
-  const takenAfgerondWeek = getTakenDezeWeekAfgerond();
+  const taken = dashboardData.taken;
+  const openTaken = taken.filter((taak) => taak.status === "open" || taak.status === "bezig").length;
+  const takenAfgerondWeek = taken.filter(
+    (taak) => taak.status === "afgerond" && new Date(`${taak.deadline}T00:00:00`) >= weekStart
+  ).length;
 
-  const totaalProducten = producten.length;
-  const medewerkers = getMedewerkers();
+  const totaalProducten = dashboardData.productenAantal;
+  const medewerkers = dashboardData.medewerkers;
 
   return (
     <main className="flex-1">
-      <div className="w-full pl-10 pr-6 py-8">
+      <div className="dashboard-page-shell w-full pl-10 pr-6 py-8">
         <h2 className="mb-2 text-2xl font-semibold text-gray-900">Rapportage</h2>
         <p className="mb-8 text-gray-600">
           Overzicht van statistieken en kerncijfers. Gebruik deze gegevens voor periodieke rapporten en export.
         </p>
+
+        <DagrapportagePanel />
 
         {/* KPI-samenvatting */}
         <div className="mb-8">
@@ -95,7 +105,7 @@ export default function RapportagePage() {
             <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
               <p className="text-sm font-medium text-gray-500">Open tickets</p>
               <p className="mt-1 text-2xl font-semibold text-gray-900">{ticketsOpen}</p>
-              <p className="mt-1 text-xs text-gray-600">Totaal tickets: {MOCK_KLANTENSERVICE.length}</p>
+              <p className="mt-1 text-xs text-gray-600">Totaal tickets: {tickets.length}</p>
             </div>
             <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
               <p className="text-sm font-medium text-gray-500">B2B klanten</p>
@@ -108,7 +118,7 @@ export default function RapportagePage() {
         {/* Omzet per merk */}
         <div className="mb-8">
           <h3 className="mb-4 text-lg font-semibold text-gray-900">Omzet per merk (deze maand)</h3>
-          <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
+          <div className="ui-table-shell overflow-x-auto rounded-lg border shadow-sm">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -186,8 +196,9 @@ export default function RapportagePage() {
                 <p className="text-xs font-medium text-gray-500">Status</p>
                 <ul className="mt-1 space-y-1 text-sm">
                   <li className="flex justify-between"><span>Open</span><span>{ticketsOpen}</span></li>
-                  <li className="flex justify-between"><span>Beantwoord</span><span>{ticketsBeantwoord}</span></li>
-                  <li className="flex justify-between"><span>Afgehandeld</span><span>{ticketsAfgehandeld}</span></li>
+                  <li className="flex justify-between"><span>In behandeling</span><span>{ticketsInBehandeling}</span></li>
+                  <li className="flex justify-between"><span>Wacht op klant</span><span>{ticketsWachtOpKlant}</span></li>
+                  <li className="flex justify-between"><span>Opgelost</span><span>{ticketsOpgelost}</span></li>
                 </ul>
               </div>
               <div>

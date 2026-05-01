@@ -1,12 +1,8 @@
 import { NextResponse } from "next/server";
 import Papa from "papaparse";
 import { MERKEN } from "@/lib/merken";
-import {
-  getProducten,
-  getProductBySku,
-  createProduct,
-  updateProduct,
-} from "@/lib/producten-store";
+import { createClient } from "@/utils/supabase/server";
+import { cookies } from "next/headers";
 
 const VALID_MERK_IDS = new Set(MERKEN.map((m) => m.id));
 
@@ -32,6 +28,7 @@ function parseVoorraad(val: unknown): number | undefined {
 
 export async function POST(request: Request) {
   try {
+    const supabase = createClient(cookies());
     let csvText: string;
     let mapping: Record<string, string> = {};
     const contentType = request.headers.get("content-type") ?? "";
@@ -110,8 +107,7 @@ export async function POST(request: Request) {
       };
     });
 
-    let added = 0;
-    let updated = 0;
+    let upserted = 0;
     const errors: { row: number; message: string }[] = [];
 
     for (let i = 0; i < normalizedRows.length; i++) {
@@ -135,40 +131,32 @@ export async function POST(request: Request) {
         ? (r.imageFileName.startsWith("http") ? r.imageFileName : "/uploads/producten/" + r.imageFileName)
         : undefined;
 
-      const existing = getProductBySku(r.sku);
-      if (existing) {
-        updateProduct(existing.id, {
-          merkId,
+      const id = `p-${Date.now()}-${i}`;
+      const { error } = await supabase.from("products").upsert(
+        {
+          id,
+          merk_id: merkId,
           naam: r.naam,
           sku: r.sku,
-          ean: r.ean || undefined,
+          ean: r.ean || null,
           prijs,
-          voorraad,
-          beschrijving: r.beschrijving || undefined,
-          specificaties: r.specificaties || undefined,
-          imageUrl: imageUrl ?? existing.imageUrl,
-        });
-        updated++;
-      } else {
-        createProduct({
-          merkId,
-          naam: r.naam,
-          sku: r.sku,
-          ean: r.ean || undefined,
-          prijs,
-          voorraad,
-          beschrijving: r.beschrijving || undefined,
-          specificaties: r.specificaties || undefined,
-          imageUrl,
-        });
-        added++;
+          voorraad: voorraad ?? null,
+          beschrijving: r.beschrijving || null,
+          specificaties: r.specificaties || null,
+          image_url: imageUrl ?? null,
+        },
+        { onConflict: "sku" }
+      );
+      if (error) {
+        errors.push({ row: rowNum, message: error.message });
+        continue;
       }
+      upserted++;
     }
 
     return NextResponse.json({
       success: true,
-      added,
-      updated,
+      upserted,
       total: rows.length,
       errors: errors.slice(0, 50),
     });

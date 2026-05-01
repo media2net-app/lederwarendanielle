@@ -1,5 +1,11 @@
-import type { Bestelling } from "./mock-bestellingen";
-import type { Product } from "./mock-producten";
+import type { Bestelling } from "./orders-shared";
+
+interface Product {
+  id: string;
+  sku: string;
+  naam: string;
+  voorraad?: number;
+}
 
 export type Verzendmethode = "schip" | "vliegtuig";
 

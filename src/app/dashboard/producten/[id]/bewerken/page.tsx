@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { MERKEN } from "@/lib/merken";
-import type { Product } from "@/lib/mock-producten";
+import type { Product } from "@/lib/products-shared";
 
 type UploadFile = { name: string; url: string };
 

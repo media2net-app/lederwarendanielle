@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
-import { getAfspraken } from "@/lib/dashboard-data";
-import type { Afspraak } from "@/lib/dashboard-data";
+import type { Afspraak } from "@/lib/agenda-shared";
 
 function typeLabel(type: string) {
   switch (type) {
@@ -31,13 +30,33 @@ function pad(n: number): string {
 
 export default function AgendaPage() {
   const [toonMeer, setToonMeer] = useState(false);
+  const [alleAfspraken, setAlleAfspraken] = useState<Afspraak[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const vandaag = useMemo(() => {
     const d = new Date();
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   }, []);
 
-  const alleAfspraken = useMemo(() => getAfspraken(), []);
+  useEffect(() => {
+    let mounted = true;
+    fetch("/api/agenda")
+      .then(async (res) => {
+        const payload = (await res.json()) as { data?: Afspraak[]; error?: string };
+        if (!res.ok) throw new Error(payload.error ?? "Kon agenda niet laden.");
+        if (mounted) setAlleAfspraken(payload.data ?? []);
+      })
+      .catch(() => {
+        if (mounted) setAlleAfspraken([]);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const komendeAfspraken = useMemo(
     () => alleAfspraken.filter((a) => a.datum >= vandaag),
     [alleAfspraken, vandaag]
@@ -116,6 +135,7 @@ export default function AgendaPage() {
                 </div>
               </Link>
             ))}
+            {loading && <p className="text-sm text-gray-500">Agenda laden...</p>}
           </div>
           {komendeAfspraken.length === 0 && (
             <p className="py-4 text-center text-sm text-gray-500">Geen komende afspraken.</p>

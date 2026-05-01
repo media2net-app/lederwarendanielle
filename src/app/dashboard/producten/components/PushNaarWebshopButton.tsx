@@ -21,14 +21,14 @@ export default function PushNaarWebshopButton({ merkId }: { merkId: string }) {
       </button>
       {showMessage && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          className="modal-overlay fixed inset-0 z-50 flex items-center justify-center"
           onClick={() => setShowMessage(false)}
           onKeyDown={(e) => e.key === "Escape" && setShowMessage(false)}
           role="dialog"
           aria-modal="true"
         >
           <div
-            className="max-w-md rounded-lg bg-white p-6 shadow-xl"
+            className="modal-surface max-w-md rounded-lg p-6 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <p className="text-gray-800">{PLACEHOLDER_MSG}</p>

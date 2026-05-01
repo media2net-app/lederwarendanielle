@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { MERKEN, getMerkById } from "@/lib/merken";
-import { getBestellingen, type BestellingStatus } from "@/lib/mock-bestellingen";
-import { getOrderStatusMap } from "@/lib/demo-state";
+import type { Bestelling, BestellingStatus } from "@/lib/orders-shared";
 
 function formatDatum(iso: string) {
   return new Date(iso).toLocaleDateString("nl-NL", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -37,29 +36,60 @@ const STATUS_OPTIONS: { value: string; label: string }[] = [
 export default function BestellingenPage() {
   const router = useRouter();
   const [merkFilter, setMerkFilter] = useState<string>("");
-  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("open");
   const [version, setVersion] = useState(0);
+  const [bestellingen, setBestellingen] = useState<Bestelling[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const bestellingen = useMemo(() => {
-    const statusMap = getOrderStatusMap();
-    const base = getBestellingen(merkFilter || undefined, undefined).map((b) => ({
-      ...b,
-      status: statusMap[b.id] ?? b.status,
-    }));
-    if (!statusFilter) return base;
-    return base.filter((b) => b.status === statusFilter);
-  }, [merkFilter, statusFilter, version]);
+  const filteredBestellingen = useMemo(() => {
+    if (!statusFilter) return bestellingen;
+    return bestellingen.filter((b) => b.status === statusFilter);
+  }, [bestellingen, statusFilter]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const controller = new AbortController();
+    const loadOrders = async () => {
+      setLoading(true);
+      setError(null);
+      const params = new URLSearchParams();
+      if (merkFilter) params.set("merkId", merkFilter);
+      const res = await fetch(`/api/orders?${params.toString()}`, { signal: controller.signal });
+      const payload = await res.json();
+      if (!isMounted) return;
+      if (!res.ok) {
+        setError(payload.error ?? "Kon bestellingen niet ophalen.");
+        setBestellingen([]);
+      } else {
+        setBestellingen(payload.data ?? []);
+      }
+      setLoading(false);
+    };
+
+    loadOrders().catch((err) => {
+      if (!isMounted || err?.name === "AbortError") return;
+      setError("Kon bestellingen niet ophalen.");
+      setBestellingen([]);
+      setLoading(false);
+    });
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, [merkFilter, version]);
 
   return (
     <main className="flex-1">
-      <div className="w-full pl-10 pr-6 py-8">
+      <div className="dashboard-page-shell w-full pl-10 pr-6 py-8">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-2xl font-semibold text-gray-900">Bestellingen</h2>
           <div className="flex flex-wrap items-center gap-4">
             <button
               type="button"
               onClick={() => setVersion((v) => v + 1)}
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50"
+              className="ui-btn-secondary rounded-lg px-3 py-2 text-xs font-medium"
             >
               Vernieuwen
             </button>
@@ -68,7 +98,7 @@ export default function BestellingenPage() {
               <select
                 value={merkFilter}
                 onChange={(e) => setMerkFilter(e.target.value)}
-                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+                className="ui-select rounded-lg px-3 py-2"
               >
                 <option value="">Alle merken</option>
                 {MERKEN.map((m) => (
@@ -81,7 +111,7 @@ export default function BestellingenPage() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+                className="ui-select rounded-lg px-3 py-2"
               >
                 {STATUS_OPTIONS.map((o) => (
                   <option key={o.value || "all"} value={o.value}>{o.label}</option>
@@ -90,7 +120,7 @@ export default function BestellingenPage() {
             </label>
           </div>
         </div>
-        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
+        <div className="ui-table-shell overflow-x-auto rounded-lg border shadow-sm">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -103,13 +133,27 @@ export default function BestellingenPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {bestellingen.map((b) => {
+              {filteredBestellingen.map((b) => {
                 const merk = getMerkById(b.merkId);
+                const rowStatusClass =
+                  b.status === "verzonden"
+                    ? "order-row--verzonden"
+                    : b.status === "open"
+                      ? "order-row--open"
+                      : b.status === "te_plukken"
+                        ? "order-row--te-plukken"
+                        : b.status === "gepicked"
+                          ? "order-row--gepicked"
+                          : b.status === "verpakt"
+                            ? "order-row--verpakt"
+                            : b.status === "verwerkt"
+                              ? "order-row--verwerkt"
+                              : "order-row--afgeleverd";
                 return (
                   <tr
                     key={b.id}
                     onClick={() => router.push(`/dashboard/bestellingen/${b.id}`)}
-                    className="cursor-pointer hover:bg-gray-100 transition-colors"
+                    className={`order-row cursor-pointer transition-colors ${rowStatusClass}`}
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => {
@@ -136,7 +180,9 @@ export default function BestellingenPage() {
             </tbody>
           </table>
         </div>
-        {bestellingen.length === 0 && (
+        {error && <p className="mt-4 text-center text-sm text-rose-600">{error}</p>}
+        {loading && <p className="mt-4 text-center text-sm text-gray-500">Bestellingen laden...</p>}
+        {!loading && filteredBestellingen.length === 0 && (
           <p className="mt-4 text-center text-sm text-gray-500">Geen bestellingen gevonden.</p>
         )}
       </div>

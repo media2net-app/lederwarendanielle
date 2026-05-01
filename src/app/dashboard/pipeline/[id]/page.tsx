@@ -1,17 +1,26 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getLeadById, PIPELINE_STAGES } from "@/lib/mock-pipeline";
+import { PIPELINE_STAGES, mapDbPipelineLead, type DbPipelineLeadRow } from "@/lib/pipeline-shared";
 import { getMerkById } from "@/lib/merken";
+import { createClient } from "@/utils/supabase/server";
+import { cookies } from "next/headers";
 
 function stageLabel(stageId: string) {
   return PIPELINE_STAGES.find((s) => s.id === stageId)?.label ?? stageId;
 }
 
-export default function LeadDetailPage({ params }: { params: { id?: string } }) {
+export default async function LeadDetailPage({ params }: { params: { id?: string } }) {
   const id = params?.id;
   if (!id) notFound();
-  const lead = getLeadById(id);
-  if (!lead) notFound();
+
+  const supabase = createClient(cookies());
+  const { data } = await supabase
+    .from("pipeline_leads")
+    .select("id, bedrijfsnaam, contactpersoon, email, stage, merk_interesse, notities, datum, potentiele_omzet")
+    .eq("id", id)
+    .single();
+  if (!data) notFound();
+  const lead = mapDbPipelineLead(data as DbPipelineLeadRow);
 
   const merkenLabels = lead.merkInteresse.map((m) => getMerkById(m)?.naam ?? m).join(", ");
 

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
-import { getTicketById } from "@/lib/mock-klantenservice";
+import { createClient } from "@/utils/supabase/server";
+import { cookies } from "next/headers";
+import type { DbMessageRow, DbTicketRow } from "@/lib/support-shared";
 
 export async function POST(request: Request) {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -11,16 +13,32 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const ticketId = body.ticketId ?? body.id;
-    const ticket = ticketId ? getTicketById(ticketId) : null;
+    const supabase = createClient(cookies());
+    const { data: ticket, error: ticketError } = ticketId
+      ? await supabase
+          .from("tickets")
+          .select("id, conversation_id, onderwerp, klant_naam, klant_email, kanaal")
+          .eq("id", ticketId)
+          .single()
+      : { data: null, error: null };
 
-    if (!ticket) {
+    if (!ticket || ticketError) {
       return NextResponse.json({ error: "Ticket niet gevonden." }, { status: 404 });
     }
 
-    const laatsteBerichten = ticket.berichten.slice(-4).map((b) => `${b.afzender}: ${b.tekst}`).join("\n");
+    const { data: messages } = await supabase
+      .from("messages")
+      .select("direction, body, created_at")
+      .eq("conversation_id", (ticket as DbTicketRow).conversation_id)
+      .order("created_at", { ascending: true })
+      .limit(50);
+    const laatsteBerichten = ((messages ?? []) as DbMessageRow[])
+      .slice(-4)
+      .map((b) => `${b.direction === "inbound" ? "klant" : "support"}: ${b.body}`)
+      .join("\n");
     const openai = new OpenAI({ apiKey });
 
-    const prompt = `Klantenservice ticket. Onderwerp: ${ticket.onderwerp}. Klant: ${ticket.klantNaam} (${ticket.klantEmail}). Kanaal: ${ticket.kanaal}.
+    const prompt = `Klantenservice ticket. Onderwerp: ${(ticket as DbTicketRow).onderwerp}. Klant: ${(ticket as DbTicketRow).klant_naam} (${(ticket as DbTicketRow).klant_email}). Kanaal: ${(ticket as DbTicketRow).kanaal}.
 Laatste berichten:\n${laatsteBerichten}
 
 Schrijf een kort, professioneel antwoord namens support (1-4 zinnen, Nederlands, vriendelijk en oplossingsgericht). Geen aanhef of handtekening.`;

@@ -1,21 +1,8 @@
 import Link from "next/link";
-import {
-  getBestellingenVandaag,
-  getBestellingenDezeWeek,
-  getLaatsteBestellingen,
-} from "@/lib/mock-bestellingen";
-import { getOpenTicketsCount, getLaatsteTickets } from "@/lib/mock-klantenservice";
-import { getProducten } from "@/lib/producten-store";
 import { getMerkById } from "@/lib/merken";
-import {
-  getMerkStatistieken,
-  getOpenTakenCount,
-  getTakenDezeWeekAfgerond,
-  getTaken,
-  getMedewerkers,
-  getTotaalOmzetDezeMaand,
-  getTotaalDoelDezeMaand,
-} from "@/lib/dashboard-data";
+import DagrapportageNotice from "./components/DagrapportageNotice";
+import OperatorRecommendations from "./components/OperatorRecommendations";
+import { getDashboardDbData } from "@/lib/dashboard-db";
 
 function formatDatum(iso: string) {
   return new Date(iso).toLocaleDateString("nl-NL", {
@@ -31,67 +18,186 @@ function formatBedrag(n: number) {
   return new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" }).format(n);
 }
 
-export default function DashboardPage() {
-  const bestellingenVandaag = getBestellingenVandaag();
-  const bestellingenDezeWeek = getBestellingenDezeWeek();
-  const openTickets = getOpenTicketsCount();
-  const openTaken = getOpenTakenCount();
-  const takenDezeWeekAfgerond = getTakenDezeWeekAfgerond();
-  const totaalProducten = getProducten().length;
-  const omzetMaand = getTotaalOmzetDezeMaand();
-  const doelMaand = getTotaalDoelDezeMaand();
-  const procentDoelTotaal = doelMaand > 0 ? Math.round((omzetMaand / doelMaand) * 100) : 0;
+function getOperatorStatus(openTaken: number, openTickets: number, bestellingenVandaag: number) {
+  if (openTaken >= 8 || openTickets >= 5) return "Aandacht nodig";
+  if (bestellingenVandaag >= 3) return "Drukke flow";
+  return "Stabiel";
+}
 
-  const producten = getProducten();
-  const productenPerMerk = producten.reduce(
-    (acc, p) => {
-      acc[p.merkId] = (acc[p.merkId] ?? 0) + 1;
-      return acc;
+function getTodayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export default async function DashboardPage() {
+  const { bestellingen, tickets, taken, medewerkers, productenAantal, merkStats, omzetMaand, doelMaand } =
+    await getDashboardDbData();
+  const todayISO = getTodayISO();
+  const weekStart = new Date();
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+  weekStart.setHours(0, 0, 0, 0);
+
+  const bestellingenVandaag = bestellingen.filter((bestelling) => bestelling.datum.slice(0, 10) === todayISO).length;
+  const bestellingenDezeWeek = bestellingen.filter((bestelling) => new Date(bestelling.datum) >= weekStart).length;
+  const openTickets = tickets.filter((ticket) => ticket.status === "open").length;
+  const openTaken = taken.filter((taak) => taak.status === "open" || taak.status === "bezig").length;
+  const takenDezeWeekAfgerond = taken.filter(
+    (taak) => taak.status === "afgerond" && new Date(`${taak.deadline}T00:00:00`) >= weekStart
+  ).length;
+  const totaalProducten = productenAantal;
+  const procentDoelTotaal = doelMaand > 0 ? Math.round((omzetMaand / doelMaand) * 100) : 0;
+  const openTakenLijst = taken.filter((taak) => taak.status === "open" || taak.status === "bezig");
+  const laatsteBestellingen = bestellingen.slice(0, 3);
+  const laatsteTickets = tickets.slice(0, 3);
+  const operatorStatus = getOperatorStatus(openTaken, openTickets, bestellingenVandaag);
+  const priorityTasks = openTakenLijst.filter((taak) => taak.prioriteit === "hoog").slice(0, 3);
+  const morningBriefing = [
+    `Goedemorgen. Operator status voor ${todayISO}: ${operatorStatus}.`,
+    `Er staan ${openTickets} open tickets, ${openTaken} open taken en ${bestellingenVandaag} bestellingen vandaag.`,
+    priorityTasks.length > 0
+      ? `Top focus: ${priorityTasks.map((task) => task.titel).join(", ")}.`
+      : "Er zijn geen hoge prioriteitstaken open.",
+  ].join(" ");
+  const operatorRecommendations: Array<{
+    id: string;
+    title: string;
+    detail: string;
+    tone: "attention" | "focus" | "stable";
+  }> = [
+    {
+      id: "tickets",
+      title: "Support eerst stabiliseren",
+      detail:
+        openTickets > 0
+          ? `${openTickets} tickets staan open. Werk eerst klantvragen met directe opvolging af.`
+          : "Geen open support-escalaties. Houd follow-up op recente klantvragen in de gaten.",
+      tone: openTickets >= 5 ? "attention" : "focus",
     },
-    {} as Record<string, number>
-  );
-  const merkStats = getMerkStatistieken(productenPerMerk);
-  const openTakenLijst = getTaken().filter((t) => t.status === "open" || t.status === "bezig");
-  const medewerkers = getMedewerkers();
-  const laatsteBestellingen = getLaatsteBestellingen(3);
-  const laatsteTickets = getLaatsteTickets(3);
+    {
+      id: "taken",
+      title: "Operationele focus",
+      detail:
+        priorityTasks.length > 0
+          ? `Pak eerst deze taken op: ${priorityTasks.map((task) => task.titel).join(", ")}.`
+          : "Er zijn geen hoge prioriteitstaken. Verdeel capaciteit op basis van open bestellingen en tickets.",
+      tone: priorityTasks.length > 0 ? "attention" : "stable",
+    },
+    {
+      id: "flow",
+      title: "Flow en capaciteit",
+      detail:
+        bestellingenVandaag > 0
+          ? `${bestellingenVandaag} nieuwe bestellingen vandaag. Check pick-pack en verzending voor bottlenecks.`
+          : "Er zijn nog geen nieuwe bestellingen vandaag. Gebruik ruimte voor follow-up, optimalisatie en backlog.",
+      tone: bestellingenVandaag >= 3 ? "focus" : "stable",
+    },
+  ];
 
   return (
     <main className="flex-1">
-      <div className="w-full pl-10 pr-6 py-8">
+      <div className="dashboard-page-shell w-full pl-10 pr-6 py-8">
         <h2 className="mb-2 text-2xl font-semibold text-gray-900">Dashboard</h2>
         <p className="mb-8 text-gray-600">
           Welkom in het AI Headquarters. Overzicht van hoe Lederwaren Daniëlle er voor staat.
         </p>
 
-        <div className="mb-6 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">Demo script (10 min)</p>
-          <p className="mt-1 text-sm text-indigo-900">1) Bestellingen 2) Pick & Pack 3) Forecast 4) Klantenservice 5) AI Studio</p>
-          <p className="mt-1 text-xs text-indigo-700">Laatst bijgewerkt: {new Date().toLocaleString("nl-NL")}</p>
-        </div>
+        <DagrapportageNotice />
+        <OperatorRecommendations
+          dateISO={todayISO}
+          briefing={morningBriefing}
+          recommendations={operatorRecommendations}
+        />
+
+        <section className="mb-8 rounded-2xl border border-slate-900 bg-slate-950 px-5 py-5 text-white shadow-xl">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-3xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">Command Center</p>
+              <h3 className="mt-2 text-2xl font-semibold">Operator status: {operatorStatus}</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-300">
+                AI operator mode werkt als werkmotor van het platform: prioriteert open acties, ondersteunt voice-commando&apos;s
+                en stuurt vervolgacties op bestellingen, tickets en taken.
+              </p>
+            </div>
+
+            <div className="grid min-w-[280px] gap-3 sm:grid-cols-3 lg:min-w-[360px] lg:grid-cols-1">
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <p className="text-xs uppercase tracking-wide text-slate-400">Open tickets</p>
+                <p className="mt-1 text-2xl font-semibold">{openTickets}</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <p className="text-xs uppercase tracking-wide text-slate-400">Open taken</p>
+                <p className="mt-1 text-2xl font-semibold">{openTaken}</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <p className="text-xs uppercase tracking-wide text-slate-400">Orders vandaag</p>
+                <p className="mt-1 text-2xl font-semibold">{bestellingenVandaag}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+            <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+              <p className="text-sm font-semibold text-white">Top prioriteiten</p>
+              <div className="mt-3 grid gap-3">
+                {priorityTasks.length > 0 ? (
+                  priorityTasks.map((task) => (
+                    <div key={task.id} className="rounded-lg border border-white/10 bg-black/20 px-3 py-3">
+                      <p className="text-sm font-medium text-white">{task.titel}</p>
+                      <p className="mt-1 text-xs text-slate-300">
+                        {task.toegewezenAan} · deadline {task.deadline} · prioriteit {task.prioriteit}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-300">Er staan nu geen hoge prioriteitstaken open.</p>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+              <p className="text-sm font-semibold text-white">Voice operator commando&apos;s</p>
+              <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-200">
+                {[
+                  "dagstart",
+                  "prioriteiten",
+                  "open bestellingen",
+                  "werkqueue support",
+                  "werkqueue operations",
+                  "lees de dagrapportage voor",
+                ].map((command) => (
+                  <span key={command} className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5">
+                    {command}
+                  </span>
+                ))}
+              </div>
+              <p className="mt-4 text-sm text-slate-300">
+                Gebruik operator mode voor handsfree sturing van dagelijkse flow, vervolgacties en teamfocus.
+              </p>
+            </div>
+          </div>
+        </section>
 
         <div className="mb-8 flex flex-wrap gap-3">
           <Link
             href="/dashboard/bestellingen"
-            className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+            className="ui-btn-primary rounded-lg px-4 py-2 text-sm font-medium"
           >
             Bekijk bestellingen
           </Link>
           <Link
             href="/dashboard/klantenservice"
-            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50"
+            className="ui-btn-secondary rounded-lg border px-4 py-2 text-sm font-medium"
           >
             Open tickets
           </Link>
           <Link
             href="/dashboard/producten"
-            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50"
+            className="ui-btn-secondary rounded-lg border px-4 py-2 text-sm font-medium"
           >
             Producten
           </Link>
           <Link
             href="/dashboard/merken"
-            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50"
+            className="ui-btn-secondary rounded-lg border px-4 py-2 text-sm font-medium"
           >
             Merken & webshops
           </Link>

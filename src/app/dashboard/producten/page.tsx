@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MERKEN, getMerkById } from "@/lib/merken";
-import type { Product } from "@/lib/mock-producten";
+import type { Product } from "@/lib/products-shared";
 
 function formatPrijs(n: number) {
   return new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" }).format(n);

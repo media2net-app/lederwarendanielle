@@ -1,50 +1,57 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
-import {
-  CHAT_CONVERSATIONS,
-  CHAT_CURRENT_USER_ID,
-  CHAT_SEED_MESSAGES,
-  CHAT_USERS,
-  getChatConversationById,
-  getChatUserById,
-  type ChatConversation,
-  type ChatMessage,
-} from "@/lib/mock-chat";
-import {
-  appendConversationMessage,
-  getChatReadMap,
-  getConversationMessages,
-  markConversationRead,
-} from "@/lib/demo-state";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import type { ChatBootstrapResponse, ChatConversation, ChatMessage, ChatUser } from "@/lib/internal-chat-shared";
+
+const CHAT_CURRENT_USER_ID = "m1";
 
 function formatTijd(iso: string) {
   return new Date(iso).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
 }
 
 export default function ChatPage() {
-  const [activeId, setActiveId] = useState<string>(CHAT_CONVERSATIONS[0]?.id ?? "");
+  const [users, setUsers] = useState<ChatUser[]>([]);
+  const [conversations, setConversations] = useState<ChatConversation[]>([]);
+  const [messagesByConversation, setMessagesByConversation] = useState<Record<string, ChatMessage[]>>({});
+  const [readMap, setReadMap] = useState<Record<string, string>>({});
+  const [activeId, setActiveId] = useState<string>("");
   const [nieuwBericht, setNieuwBericht] = useState("");
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    fetch(`/api/internal-chat?userId=${CHAT_CURRENT_USER_ID}`)
+      .then(async (res) => {
+        const payload = (await res.json()) as ChatBootstrapResponse & { error?: string };
+        if (!res.ok) throw new Error(payload.error ?? "Kon chat niet laden.");
+        if (!mounted) return;
+        setUsers(payload.users ?? []);
+        setConversations(payload.conversations ?? []);
+        setMessagesByConversation(payload.messagesByConversation ?? {});
+        setReadMap(payload.readMap ?? {});
+        setActiveId((payload.conversations ?? [])[0]?.id ?? "");
+      })
+      .catch((err: unknown) => {
+        if (mounted) setError(err instanceof Error ? err.message : "Kon chat niet laden.");
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const activeConversation = useMemo(
-    () => getChatConversationById(activeId),
-    [activeId]
+    () => conversations.find((conversation) => conversation.id === activeId),
+    [activeId, conversations]
   );
-
-  const messagesByConversation = useMemo(() => {
-    const map: Record<string, ChatMessage[]> = {};
-    CHAT_CONVERSATIONS.forEach((conv) => {
-      map[conv.id] = getConversationMessages(conv.id, CHAT_SEED_MESSAGES[conv.id] ?? []);
-    });
-    return map;
-  }, [refreshKey]);
-
-  const readMap = useMemo(() => getChatReadMap(), [refreshKey]);
 
   const unreadByConversation = useMemo(() => {
     const map: Record<string, number> = {};
-    CHAT_CONVERSATIONS.forEach((conv) => {
+    conversations.forEach((conv) => {
       const lastRead = readMap[conv.id];
       const lastReadTs = lastRead ? new Date(lastRead).getTime() : 0;
       const unread = (messagesByConversation[conv.id] ?? []).filter((m) => {
@@ -54,7 +61,7 @@ export default function ChatPage() {
       map[conv.id] = unread;
     });
     return map;
-  }, [messagesByConversation, readMap]);
+  }, [conversations, messagesByConversation, readMap]);
 
   const totalUnread = useMemo(
     () => Object.values(unreadByConversation).reduce((sum, n) => sum + n, 0),
@@ -66,14 +73,20 @@ export default function ChatPage() {
   const openConversation = (conv: ChatConversation) => {
     setActiveId(conv.id);
     const last = (messagesByConversation[conv.id] ?? []).at(-1);
-    if (last) markConversationRead(conv.id, last.at);
-    setRefreshKey((k) => k + 1);
+    if (last) {
+      setReadMap((prev) => ({ ...prev, [conv.id]: last.at }));
+      fetch("/api/internal-chat/reads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversationId: conv.id, userId: CHAT_CURRENT_USER_ID, at: last.at }),
+      }).catch(() => {});
+    }
   };
 
   const handleVerstuur = (e: FormEvent) => {
     e.preventDefault();
     if (!activeConversation || !nieuwBericht.trim()) return;
-    const currentUser = getChatUserById(CHAT_CURRENT_USER_ID);
+    const currentUser = users.find((user) => user.id === CHAT_CURRENT_USER_ID);
     const message: ChatMessage = {
       id: `m-${Date.now()}`,
       conversationId: activeConversation.id,
@@ -82,10 +95,47 @@ export default function ChatPage() {
       tekst: nieuwBericht.trim(),
       at: new Date().toISOString(),
     };
-    appendConversationMessage(activeConversation.id, message);
-    markConversationRead(activeConversation.id, message.at);
+
+    setMessagesByConversation((prev) => ({
+      ...prev,
+      [activeConversation.id]: [...(prev[activeConversation.id] ?? []), message],
+    }));
+    setReadMap((prev) => ({ ...prev, [activeConversation.id]: message.at }));
     setNieuwBericht("");
-    setRefreshKey((k) => k + 1);
+
+    fetch("/api/internal-chat/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        conversationId: activeConversation.id,
+        senderId: CHAT_CURRENT_USER_ID,
+        senderNaam: message.senderNaam,
+        tekst: message.tekst,
+      }),
+    })
+      .then(async (res) => {
+        const payload = (await res.json()) as { data?: ChatMessage; error?: string };
+        if (!res.ok || !payload.data) throw new Error(payload.error ?? "Bericht versturen mislukt.");
+        setMessagesByConversation((prev) => ({
+          ...prev,
+          [activeConversation.id]: [
+            ...(prev[activeConversation.id] ?? []).filter((item) => item.id !== message.id),
+            payload.data as ChatMessage,
+          ],
+        }));
+        return payload.data;
+      })
+      .then((saved) => {
+        if (!saved) return;
+        return fetch("/api/internal-chat/reads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ conversationId: activeConversation.id, userId: CHAT_CURRENT_USER_ID, at: saved.at }),
+        });
+      })
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : "Bericht versturen mislukt.");
+      });
   };
 
   return (
@@ -105,7 +155,7 @@ export default function ChatPage() {
           <aside className="rounded-lg border border-gray-200 bg-white p-3">
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Gesprekken</h3>
             <div className="space-y-2">
-              {CHAT_CONVERSATIONS.map((conv) => {
+              {conversations.map((conv) => {
                 const isActive = conv.id === activeId;
                 const unread = unreadByConversation[conv.id] ?? 0;
                 return (
@@ -125,10 +175,14 @@ export default function ChatPage() {
                         </span>
                       )}
                     </div>
-                    <p className="mt-0.5 text-xs text-gray-500">{conv.type === "channel" ? "Kanaal" : "Direct message"}</p>
+                    <p className="mt-0.5 text-xs text-gray-500">
+                      {conv.type === "channel" ? "Kanaal" : "Direct message"}
+                    </p>
                   </button>
                 );
               })}
+              {loading && <p className="text-xs text-gray-500">Chat laden...</p>}
+              {!loading && conversations.length === 0 && <p className="text-xs text-gray-500">Geen gesprekken gevonden.</p>}
             </div>
           </aside>
 
@@ -175,7 +229,7 @@ export default function ChatPage() {
           <aside className="rounded-lg border border-gray-200 bg-white p-3">
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Gebruikers</h3>
             <ul className="space-y-2">
-              {CHAT_USERS.map((u) => (
+              {users.map((u) => (
                 <li key={u.id} className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2">
                   <div>
                     <p className="text-sm font-medium text-gray-900">{u.naam}</p>
@@ -187,6 +241,11 @@ export default function ChatPage() {
             </ul>
           </aside>
         </div>
+        {error && (
+          <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </div>
+        )}
       </div>
     </main>
   );
