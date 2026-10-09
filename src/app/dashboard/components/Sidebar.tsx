@@ -37,6 +37,7 @@ const menuItems = [
   { href: "/dashboard/ai-studio", label: "AI Studio" },
   { href: "/dashboard/merken", label: "Merken & webshops" },
   { href: "/dashboard/klantkaart", label: "Klantkaart" },
+  { href: "/dashboard/koppelingen", label: "Koppelingen", badge: "NIEUW" },
   { href: "/dashboard/instellingen", label: "Instellingen" },
 ];
 
@@ -63,7 +64,7 @@ export default function Sidebar() {
 
   const renderMenu = () => (
     <>
-      <nav className="flex flex-col gap-1 pt-1">
+      <nav className="modern-scroll flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pt-1">
         {menuItems.map(({ href, label, badge }) => {
           const isActive = href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
           return (

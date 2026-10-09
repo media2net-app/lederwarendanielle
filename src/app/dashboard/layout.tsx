@@ -9,7 +9,7 @@ export default function DashboardLayout({
   return (
     <div className="flex h-screen overflow-hidden ui-app-shell">
       <Sidebar />
-      <div className="dashboard-skin flex-1 flex min-w-0 min-h-0 flex-col overflow-auto pt-14 md:pt-0">
+      <div className="dashboard-skin modern-scroll flex-1 flex min-w-0 min-h-0 flex-col overflow-auto pt-14 md:pt-0">
         {children}
       </div>
       <AIMedewerkerPanel />
